@@ -83,8 +83,8 @@ also takes care of creating a directory if it doesn't exist
 @param language:
     string denoting the language required to save the file in the appropriate language folder
 """
-def write_content_to_file(filename, text, language):
-    filepath = "data/articles/%s/%s.txt" %(language, filename)
+def write_content_to_file(filename, text, language, datatype):
+    filepath = "data/%s/%s/%s.txt" %(datatype, language, filename)
     d = os.path.dirname(filepath)
 
     if not os.path.exists(d):
@@ -115,11 +115,11 @@ def read_file_by_line(filename, languages):
                 if not titles[index] == "":
                     article_resp = query_text_raw(titles[index], lang)
                     if not article_resp == None:
-                        write_content_to_file("".join(titles[0].split()), article_resp['text'], lang)
+                        write_content_to_file("".join(titles[0].split()), article_resp['text'], lang, "articles")
 
                     backlink_resp = query_redirects(titles[index], lang)
                     if not backlink_resp == None:
-                        write_content_to_file("".join(titles[0].split()), backlink_resp['backlinks'], lang)
+                        write_content_to_file("".join(titles[0].split()), backlink_resp['backlinks'], lang, "backlinks")
 
 """
 method used to query for redirect backlinks
