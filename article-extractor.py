@@ -37,6 +37,13 @@ def _run_query(args, language, retry=5, wait=5):
             break
     return json
 
+"""
+method used to query for raw article text
+@param name:
+    the name/title of the article
+@param lang:
+    the language being used for the article title and text
+"""
 def query_text_raw(title, language='en'):
     """
     action=query
@@ -66,33 +73,85 @@ def create_lang_list(filename):
     f.close()
     return lang
 
-def write_content_to_file(name, article, language):
-    filepath = "data/%s/%s.txt" %(language, name)
+"""
+method to write given text to the file defined by filename
+also takes care of creating a directory if it doesn't exist 
+@param filename:
+    string containing the name of the file where data needs to be stored
+@param text:
+    string containing the data that needs to be written to file
+@param language:
+    string denoting the language required to save the file in the appropriate language folder
+"""
+def write_content_to_file(filename, text, language):
+    filepath = "data/articles/%s/%s.txt" %(language, filename)
     d = os.path.dirname(filepath)
 
     if not os.path.exists(d):
         os.makedirs(d)
 
     f = open(filepath, "w")
-    f.write(article.encode('utf-16'))
+    f.write(text.encode('utf-16'))
     f.close()
 
+"""
+method responsible for reading the file one line at a time 
+and then querying for the raw article data and backlinks linking to that data
+
+Note: it is done this way because there is no way to maintain state of the file in an efficient manner 
+without looping through the entire file every time
+
+@param filename:
+    string denoting the name of the file that needs to be read line by line
+@param languages:
+    a list of languages as retrieved from wikipedia
+"""
 def read_file_by_line(filename, languages):
     f = open(filename, "r")
     for i, line in enumerate(f):
-        # TODO read line as a list and then access the specific document name in the specific language
         if not i == 0:
             titles = line.strip("\r\n").split("\t")
             for index, lang in enumerate(languages):
                 if not titles[index] == "":
-                    article = query_text_raw(titles[index], lang)
-                    if not article == None:
-                        write_content_to_file("".join(titles[0].split()), article['text'], lang)
+                    article_resp = query_text_raw(titles[index], lang)
+                    if not article_resp == None:
+                        write_content_to_file("".join(titles[0].split()), article_resp['text'], lang)
+
+                    backlink_resp = query_redirects(titles[index], lang)
+                    if not backlink_resp == None:
+                        write_content_to_file("".join(titles[0].split()), backlink_resp['backlinks'], lang)
+
+"""
+method used to query for redirect backlinks
+@param name:
+    the name/title of the article for which backlinks are requested
+@param lang:
+    the language being used for the article title
+"""
+def query_redirects(name, lang):
+    query_args = {
+        'action': 'query',
+        'bltitle': name,
+        'list': 'backlinks',
+        'blfilterredir': 'redirects',
+        'format': 'json',
+        'bllimit': 500
+    }
+
+    json = _run_query(query_args, lang)
+    if not json == None:
+        backlinks = []
+        for page_id in json['query']['backlinks']:
+            backlinks.append(page_id['title'])
+        
+        if backlinks:
+            response = {
+                'backlinks' : "\n".join(backlinks)
+            }    
+            return response
+    return None
 
 
 if __name__ == "__main__":
-    # response = query_text_raw("Princess Charlotte of Cambridge")
-    # print(response)
-    # print(create_lang_list("test-sample"))
     languages = create_lang_list("test-sample")
     read_file_by_line("test-sample", languages)
