@@ -2,6 +2,7 @@ import urllib
 import json as simplejson
 
 import time
+import io
 import os
 
 api_url = 'https://%s.wikipedia.org/w/api.php'
@@ -25,7 +26,6 @@ def _run_query(args, language, retry=5, wait=5):
     while True:
         try:
             search_results = urllib.urlopen(url, data=data)
-            # print language +": " +args['titles'] +'\n'
             json = simplejson.loads(search_results.read())
         except Exception:
             if not retry:
@@ -82,8 +82,11 @@ also takes care of creating a directory if it doesn't exist
     string containing the data that needs to be written to file
 @param language:
     string denoting the language required to save the file in the appropriate language folder
+@param datatype:
+    string denoting the directory where the file needs to be saved
 """
 def write_content_to_file(filename, text, language, datatype):
+    # TODO: need to escape "/" from filenames (might need to replace them with "-")
     filepath = "data/%s/%s/%s.txt" %(datatype, language, filename)
     d = os.path.dirname(filepath)
 
@@ -151,7 +154,29 @@ def query_redirects(name, lang):
             return response
     return None
 
+def create_or_append_backlink(language, filename, text):
+    filepath = "data/backlinks/%s/%s.txt" %(language, filename)
+    d = os.path.dirname(filepath)
+
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+    f = open(filepath, "a")
+    f.write(text.encode("utf-16"))
+    f.close()
+
+def generate_name_backlinks(filename, languages):
+    f = open(filename, "r")
+    # backlink_dir = 
+    for i, line in enumerate(f):
+        if not i == 0:
+            titles = line.strip("\r\n").split("\t")
+            for j, lang in enumerate(languages):
+                if not titles[j] == "":
+                    create_or_append_backlink(lang, "".join(titles[0].split()), titles[j])
+
 
 if __name__ == "__main__":
     languages = create_lang_list("test-sample")
-    read_file_by_line("test-sample", languages)
+    # read_file_by_line("wikipedia-names", languages)
+    generate_name_backlinks("wikipedia-names", languages)
